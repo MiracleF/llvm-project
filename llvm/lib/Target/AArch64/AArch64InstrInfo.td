@@ -6558,6 +6558,36 @@ defm USQADD : SIMDTwoScalarBHSDTied< 1, 0b00011, "usqadd",
                                     int_aarch64_neon_usqadd>;
 
 // Floating-point conversion patterns.
+multiclass IntegerToFPSIMDScalarPatterns<SDPatternOperator OpN, string INST> {
+  let Predicates = [HasFPRCVT] in {
+  def : Pat<(f64 (OpN (i32 (bitconvert (f32 FPR32:$Rn))))),
+            (!cast<Instruction>(INST # DSr) FPR32:$Rn)>;
+  def : Pat<(f16 (OpN (i32 (bitconvert (f32 FPR32:$Rn))))),
+            (!cast<Instruction>(INST # HSr) FPR32:$Rn)>;
+  def : Pat<(f16 (OpN (i64 (bitconvert (f64 FPR64:$Rn))))),
+            (!cast<Instruction>(INST # HDr) FPR64:$Rn)>;
+  def : Pat<(f32 (OpN (i64 (bitconvert (f64 FPR64:$Rn))))),
+            (!cast<Instruction>(INST # SDr) FPR64:$Rn)>;
+  }
+  def : Pat<(f32 (OpN (i32 (bitconvert (f32 FPR32:$Rn))))),
+            (!cast<Instruction>(INST # v1i32) FPR32:$Rn)>;
+  def : Pat<(f64 (OpN (i64 (bitconvert (f64 FPR64:$Rn))))),
+            (!cast<Instruction>(INST # v1i64) FPR64:$Rn)>;
+
+  def : Pat<(f16 (OpN (i16 (vector_extract (v8i16 FPR128:$Rn), (i64 0))))),
+            (!cast<Instruction>(INST # v1i16)
+              (EXTRACT_SUBREG (v8i16 FPR128:$Rn), hsub))>;
+  def : Pat<(f32 (OpN (i32 (vector_extract (v4i32 FPR128:$Rn), (i64 0))))),
+            (!cast<Instruction>(INST # v1i32)
+              (EXTRACT_SUBREG (v4i32 FPR128:$Rn), ssub))>;
+  def : Pat<(f64 (OpN (i64 (vector_extract (v2i64 FPR128:$Rn), (i64 0))))),
+            (!cast<Instruction>(INST # v1i64)
+              (EXTRACT_SUBREG (v2i64 FPR128:$Rn), dsub))>;
+}
+defm : IntegerToFPSIMDScalarPatterns<sint_to_fp, "SCVTF">;
+defm : IntegerToFPSIMDScalarPatterns<uint_to_fp, "UCVTF">;
+
+// Floating-point conversion patterns.
 multiclass FPToIntegerSIMDScalarPatterns<SDPatternOperator OpN, string INST> {
   let Predicates = [HasFPRCVT] in {
   def : Pat<(f32 (bitconvert (i32 (OpN (f64 FPR64:$Rn))))),
